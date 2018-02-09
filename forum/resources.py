@@ -29,7 +29,7 @@ ATOM_THREAD_PROFILE = "https://tools.ietf.org/html/rfc4685"
 # Fill these in
 #TODO #3#
 #STUDENT APIARY PROJECT SHOULD HAVE THE STUDENTS PROJECT URL"
-STUDENT_APIARY_PROJECT = "https://pwpforum.docs.apiary.io"
+STUDENT_APIARY_PROJECT = "https://pwp2018exercise316.docs.apiary.io"
 APIARY_PROFILES_URL = STUDENT_APIARY_PROJECT+"/#reference/profiles/"
 APIARY_RELS_URL = STUDENT_APIARY_PROJECT+"/#reference/link-relations/"
 
