@@ -325,6 +325,30 @@ class ForumObject(MasonObject):
 
 #ERROR HANDLERS
 
+class UserProfile(Resource):
+    def get(self):
+        users_db = g.con.get_users()
+
+        envelope = ForumObject()
+        envelope.add_namespace("forum", LINK_RELATIONS_URL)
+
+        envelope.add_control("self", href=api.url_for(Messages))
+        envelope.add_control_users_all()
+
+        items = envelope["items"] = []
+
+        for user in user_db:
+            item = ForumObject(id=user["nickname"], headline=msg["lastname"])
+            item.add_control("self", href=api.url_for(User, usernickname=user["nickname"]))
+            item.add_control("profile", href=FORUM_USER_PROFILE)
+            items.append(item)
+
+        string_data = json.dumps(envelope)
+        #RENDER
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/user_profile")
+
+
+
 def create_error_response(status_code, title, message=None):
     """
     Creates a: py: class:`flask.Response` instance when sending back an
@@ -958,8 +982,39 @@ class User(Resource):
         """
 
         """#TODO 4 Implement the method"""
+        user_db = g.con.get_user(nickname)
+        if not user_db:
+            return create_error_response(404, "Message", message="There is no user with nickame %s" % nickname)
 
-        return None
+        address = user_db.get("address ", "No where")
+        avatar = user_db.get("avatar", None)
+        birthDate = user_db.get("birthDate", None)
+        email = user_db.get("email", None)
+        familyName = user_db.get("familyName", "Anonymous")
+        gender = user_db.get("gender", None)
+        givenName = user_db.get("givenName", "Anonymous")
+        signature = user_db.get("signature", None)
+        website = user_db.get("website", None)
+
+        #FILTER AND GENERATE RESPONSE
+        #Create the envelope:
+        envelope = ForumObject(
+            headline=user_db["nickname"],
+            articleBody=user_db["avatar"],
+            familyName=familyName,
+            email=email
+        )
+
+        envelope.add_namespace("forum", LINK_RELATIONS_URL)
+        envelope.add_namespace("atom-thread", ATOM_THREAD_PROFILE)
+
+        envelope.add_control("profile", href=FORUM_USER_PROFILE)
+        envelope.add_control("collection", href=api.url_for(Users))
+        envelope.add_control("self", href=api.url_for(User, messageid=nickname))
+
+        #RENDER
+        string_data = json.dumps(envelope)
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message-profile")
 
     def delete(self, nickname):
         """
@@ -973,8 +1028,13 @@ class User(Resource):
         """
 
         """#TODO 4 Implement the method"""
-
-        return None
+        if g.con.delete_user(nickname):
+            return "", 204
+        else:
+            #Send error message
+            return create_error_response(404, "Unknown message",
+                                         "There is no a message with id %s" % messageid
+                                        )
 
 class User_public(Resource):
 
@@ -1038,8 +1098,36 @@ class History(Resource):
             Semantic descriptors used in queries: after, before, length
         """
         """#TODO 4 Implement the method"""
-        return None
+        data = resques.args
+        length = int(data.get('length', '-1'))
+        before = int(data.get('length', '-1'))
+        after = int(data.get('length', '-1'))
 
+        messages = g.con.get_messages(nickname,length, before,after)
+        if not messages:
+            return create_error_response(404, "Message not found",
+                                         "There is no a message with id %s" % messageid
+                                        )
+
+
+        messages = []
+        for message in messages_db:
+            mesagge = {'link':{'href': api.url_for(Message, messageid=msg(messageid)),'rel':'self',
+                    'title': msg['title']}}
+        #Create the envelope
+        envelope = {}
+        envelope['user_links'] = [{'title': 'Sender', 'method': 'GET',
+                              'rel': 'parent', 'href': api.url_for(Users, nickname=nickname)},
+                             {'title': 'Users',
+                              'method': 'GET',
+                              'rel': 'collection',
+                              'href': api.url_for(Users)}
+                            ]
+        envelope['messages'] = messages
+
+        #RENDER
+        string_data = json.dumps(envelope)
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message-profile")
 
 #Add the Regex Converter so we can use regex expressions when we define the
 #routes
