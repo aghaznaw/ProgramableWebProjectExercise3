@@ -29,7 +29,7 @@ ATOM_THREAD_PROFILE = "https://tools.ietf.org/html/rfc4685"
 # Fill these in
 #TODO #3#
 #STUDENT APIARY PROJECT SHOULD HAVE THE STUDENTS PROJECT URL"
-STUDENT_APIARY_PROJECT = "https://pwpforum.docs.apiary.io"
+STUDENT_APIARY_PROJECT = "https://pwp2018exercise316.docs.apiary.io"
 APIARY_PROFILES_URL = STUDENT_APIARY_PROJECT+"/#reference/profiles/"
 APIARY_RELS_URL = STUDENT_APIARY_PROJECT+"/#reference/link-relations/"
 
@@ -104,7 +104,7 @@ class MasonObject(dict):
         The allowed properties can be found from here
         https://github.com/JornWildt/Mason/blob/master/Documentation/Mason-draft-2.md
 
-        : param str ctrl_name: name of the control (including namespace if any)        
+        : param str ctrl_name: name of the control (including namespace if any)
         """
 
         if "@controls" not in self:
@@ -112,24 +112,24 @@ class MasonObject(dict):
 
         self["@controls"][ctrl_name] = kwargs
 
-class ForumObject(MasonObject):    
+class ForumObject(MasonObject):
     """
-    A convenience subclass of MasonObject that defines a bunch of shorthand 
+    A convenience subclass of MasonObject that defines a bunch of shorthand
     methods for inserting application specific objects into the document. This
     class is particularly useful for adding control objects that are largely
-    context independent, and defining them in the resource methods would add a 
+    context independent, and defining them in the resource methods would add a
     lot of noise to our code - not to mention making inconsistencies much more
     likely!
 
-    In the forum code this object should always be used for root document as 
-    well as any items in a collection type resource. 
+    In the forum code this object should always be used for root document as
+    well as any items in a collection type resource.
     """
 
     def __init__(self, **kwargs):
         """
         Calls dictionary init method with any received keyword arguments. Adds
-        the controls key afterwards because hypermedia without controls is not 
-        hypermedia. 
+        the controls key afterwards because hypermedia without controls is not
+        hypermedia.
         """
 
         super(ForumObject, self).__init__(**kwargs)
@@ -147,7 +147,7 @@ class ForumObject(MasonObject):
 
     def add_control_users_all(self):
         """
-        This adds the users-all link to an object. Intended for the document object.  
+        This adds the users-all link to an object. Intended for the document object.
         """
 
         self["@controls"]["forum:users-all"] = {
@@ -157,10 +157,10 @@ class ForumObject(MasonObject):
 
     def add_control_add_message(self):
         """
-        This adds the add-message control to an object. Intended for the  
-        document object. Here you can see that adding the control is a bunch of 
-        lines where all we're basically doing is nested dictionaries to 
-        achieve the correctly formed JSON document representation. 
+        This adds the add-message control to an object. Intended for the
+        document object. Here you can see that adding the control is a bunch of
+        lines where all we're basically doing is nested dictionaries to
+        achieve the correctly formed JSON document representation.
         """
 
         self["@controls"]["forum:add-message"] = {
@@ -173,7 +173,7 @@ class ForumObject(MasonObject):
 
     def add_control_add_user(self):
         """
-        This adds the add-user control to an object. Intended ffor the 
+        This adds the add-user control to an object. Intended ffor the
         document object. Instead of adding a schema dictionary we are pointing
         to a schema url instead for two reasons: 1) to demonstrate both options;
         2) the user schema is relatively large.
@@ -189,14 +189,14 @@ class ForumObject(MasonObject):
 
     def add_control_delete_message(self, msgid):
         """
-        Adds the delete control to an object. This is intended for any 
+        Adds the delete control to an object. This is intended for any
         object that represents a message.
 
         : param str msgid: message id in the msg-N form
         """
 
         self["@controls"]["forum:delete"] = {
-            "href": api.url_for(Message, messageid=msgid),  
+            "href": api.url_for(Message, messageid=msgid),
             "title": "Delete this message",
             "method": "DELETE"
         }
@@ -219,8 +219,8 @@ class ForumObject(MasonObject):
 
     def add_control_messages_history(self, user):
         """
-        This adds the messages history control to a user which defines a href 
-        template for making queries. In Mason query parameters are defined with 
+        This adds the messages history control to a user which defines a href
+        template for making queries. In Mason query parameters are defined with
         a schema just like forms.
 
         : param str user: nickname of the user
@@ -254,7 +254,7 @@ class ForumObject(MasonObject):
         the editor field should be set. If the message is new, the author field
         should be set instead. This is controlled by the edit flag.
 
-        This schema can also be accessed from the urls /forum/schema/edit-msg/ and 
+        This schema can also be accessed from the urls /forum/schema/edit-msg/ and
         /forum/schema/add-msg/.
 
         : param bool edit: is this schema for an edit form
@@ -309,7 +309,7 @@ class ForumObject(MasonObject):
         props["length"] = {
             "description": "Maximum number of messages returned",
             "type": "integer"
-        }        
+        }
         props["before"] = {
             "description": "Find messages before (timestamp as seconds)",
             "type": "integer"
@@ -322,11 +322,35 @@ class ForumObject(MasonObject):
         return schema
 
     """#TODO 4 Implement necessary methods here to implement User and History"""
-    
+
 #ERROR HANDLERS
 
+class UserProfile(Resource):
+    def get(self):
+        users_db = g.con.get_users()
+
+        envelope = ForumObject()
+        envelope.add_namespace("forum", LINK_RELATIONS_URL)
+
+        envelope.add_control("self", href=api.url_for(Messages))
+        envelope.add_control_users_all()
+
+        items = envelope["items"] = []
+
+        for user in user_db:
+            item = ForumObject(id=user["nickname"], headline=msg["lastname"])
+            item.add_control("self", href=api.url_for(User, usernickname=user["nickname"]))
+            item.add_control("profile", href=FORUM_USER_PROFILE)
+            items.append(item)
+
+        string_data = json.dumps(envelope)
+        #RENDER
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/user_profile")
+
+
+
 def create_error_response(status_code, title, message=None):
-    """ 
+    """
     Creates a: py: class:`flask.Response` instance when sending back an
     HTTP error response
 
@@ -375,7 +399,7 @@ def connect_db():
 #HOOKS
 @app.teardown_request
 def close_connection(exc):
-    """ 
+    """
     Closes the database connection
     Check if the connection is created. It migth be exception appear before
     the connection is created.
@@ -421,15 +445,16 @@ class Messages(Resource):
 
         items = envelope["items"] = []
 
-        for msg in messages_db:             
+        for msg in messages_db:
             item = ForumObject(id=msg["messageid"], headline=msg["title"])
             item.add_control("self", href=api.url_for(Message, messageid=msg["messageid"]))
             item.add_control("profile", href=FORUM_MESSAGE_PROFILE)
             items.append(item)
 
+        string_data = json.dumps(envelope)
         #RENDER
-        return envelope, 200
-       
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message_profile")
+
 
     def post(self):
         """
@@ -471,8 +496,8 @@ class Messages(Resource):
         request_body = request.get_json(force=True)
          #It throws a BadRequest exception, and hence a 400 code if the JSON is
         #not wellformed
-        try:            
-            title = request_body["headline"]            
+        try:
+            title = request_body["headline"]
             body = request_body["articleBody"]
             sender = request_body.get("author", "Anonymous")
             ipaddress = request.remote_addr
@@ -537,10 +562,7 @@ class Message(Resource):
         #Get the message from db
         message_db = g.con.get_message(messageid)
         if not message_db:
-            abort(404, message="There is no a message with id %s" % messageid,
-                       resource_type="Message",
-                       resource_url=request.path,
-                       resource_id=messageid)
+            return create_error_response(404, "Message", message="There is no a message with id %s" % messageid)
 
         sender = message_db.get("sender", "Anonymous")
         parent = message_db.get("replyto", None)
@@ -551,7 +573,7 @@ class Message(Resource):
             headline=message_db["title"],
             articleBody=message_db["body"],
             author=sender,
-            editor=message_db["editor"]            
+            editor=message_db["editor"]
         )
 
         envelope.add_namespace("forum", LINK_RELATIONS_URL)
@@ -560,9 +582,9 @@ class Message(Resource):
         envelope.add_control_delete_message(messageid)
         envelope.add_control_edit_message(messageid)
         envelope.add_control_reply_to(messageid)
-        envelope.add_control("profile", href=FORUM_MESSAGE_PROFILE)        
+        envelope.add_control("profile", href=FORUM_MESSAGE_PROFILE)
         envelope.add_control("collection", href=api.url_for(Messages))
-        envelope.add_control("self", href=api.url_for(Message, messageid=messageid))                
+        envelope.add_control("self", href=api.url_for(Message, messageid=messageid))
         envelope.add_control("author", href=api.url_for(User, nickname=sender))
 
         if parent:
@@ -571,7 +593,8 @@ class Message(Resource):
             envelope.add_control("atom-thread:in-reply-to", href=None)
 
         #RENDER
-        return envelope, 200
+        string_data = json.dumps(envelope)
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message-profile")
 
     def delete(self, messageid):
         """
@@ -635,8 +658,8 @@ class Message(Resource):
         request_body = request.get_json(force=True)
          #It throws a BadRequest exception, and hence a 400 code if the JSON is
         #not wellformed
-        try:            
-            title = request_body["headline"]            
+        try:
+            title = request_body["headline"]
             body = request_body["articleBody"]
             editor = request_body.get("editor", "Anonymous")
             ipaddress = request.remote_addr
@@ -645,7 +668,7 @@ class Message(Resource):
             #This is launched if either title or body does not exist or if
             # the template.data array does not exist.
             return create_error_response(400, "Wrong request format",
-                                         "Be sure you include message title and body")                                          
+                                         "Be sure you include message title and body")
         else:
             #Modify the message in the database
             if not g.con.modify_message(messageid, title, body, editor):
@@ -701,8 +724,8 @@ class Message(Resource):
         request_body = request.get_json(force=True)
          #It throws a BadRequest exception, and hence a 400 code if the JSON is
         #not wellformed
-        try:            
-            title = request_body["headline"]            
+        try:
+            title = request_body["headline"]
             body = request_body["articleBody"]
             sender = request_body.get("author", "Anonymous")
             ipaddress = request.remote_addr
@@ -717,7 +740,7 @@ class Message(Resource):
         newmessageid = g.con.append_answer(messageid, title, body,
                                            sender, ipaddress)
         if not newmessageid:
-            abort(500)
+            return create_error_response(500)
 
         #Create the Location header with the id of the message created
         url = api.url_for(Message, messageid=newmessageid)
@@ -839,7 +862,8 @@ class Users(Resource):
         """
 
         if JSON != request.headers.get("Content-Type", ""):
-            abort(415)
+            return create_error_response(415, "Unsupported Media Type",
+                                         "Use a JSON compatible format", )
         #PARSE THE REQUEST:
         request_body = request.get_json(force=True)
         if not request_body:
@@ -878,7 +902,7 @@ class Users(Resource):
 
         address = request_body.get("address", None)
         if address:
-            try:                
+            try:
                 residence = "{addressLocality}, {addressCountry}".format(**address)
             except (KeyError, TypeError):
                 return create_error_response(400, "Wrong request format", "Incorrect format of address field")
@@ -958,8 +982,39 @@ class User(Resource):
         """
 
         """#TODO 4 Implement the method"""
-        
-        return None
+        user_db = g.con.get_user(nickname)
+        if not user_db:
+            return create_error_response(404, "Message", message="There is no user with nickame %s" % nickname)
+
+        address = user_db.get("address ", "No where")
+        avatar = user_db.get("avatar", None)
+        birthDate = user_db.get("birthDate", None)
+        email = user_db.get("email", None)
+        familyName = user_db.get("familyName", "Anonymous")
+        gender = user_db.get("gender", None)
+        givenName = user_db.get("givenName", "Anonymous")
+        signature = user_db.get("signature", None)
+        website = user_db.get("website", None)
+
+        #FILTER AND GENERATE RESPONSE
+        #Create the envelope:
+        envelope = ForumObject(
+            headline=user_db["nickname"],
+            articleBody=user_db["avatar"],
+            familyName=familyName,
+            email=email
+        )
+
+        envelope.add_namespace("forum", LINK_RELATIONS_URL)
+        envelope.add_namespace("atom-thread", ATOM_THREAD_PROFILE)
+
+        envelope.add_control("profile", href=FORUM_USER_PROFILE)
+        envelope.add_control("collection", href=api.url_for(Users))
+        envelope.add_control("self", href=api.url_for(User, messageid=nickname))
+
+        #RENDER
+        string_data = json.dumps(envelope)
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message-profile")
 
     def delete(self, nickname):
         """
@@ -973,8 +1028,13 @@ class User(Resource):
         """
 
         """#TODO 4 Implement the method"""
-        
-        return None
+        if g.con.delete_user(nickname):
+            return "", 204
+        else:
+            #Send error message
+            return create_error_response(404, "Unknown message",
+                                         "There is no a message with id %s" % messageid
+                                        )
 
 class User_public(Resource):
 
@@ -982,13 +1042,13 @@ class User_public(Resource):
         """
         Not implemented
         """
-        abort(501)
+        return create_error_response(501)
 
     def put (self, nickname):
         """
         Not implemented
         """
-        abort(501)
+        return create_error_response(501)
 
 class User_restricted(Resource):
 
@@ -996,13 +1056,13 @@ class User_restricted(Resource):
         """
         Not implemented
         """
-        abort(501)
+        return create_error_response(501)
 
     def put (self, nickname):
         """
         Not implemented
         """
-        abort(501)
+        return create_error_response(501)
 
 class History(Resource):
     def get (self, nickname):
@@ -1038,8 +1098,36 @@ class History(Resource):
             Semantic descriptors used in queries: after, before, length
         """
         """#TODO 4 Implement the method"""
-        return None
+        data = resques.args
+        length = int(data.get('length', '-1'))
+        before = int(data.get('length', '-1'))
+        after = int(data.get('length', '-1'))
 
+        messages = g.con.get_messages(nickname,length, before,after)
+        if not messages:
+            return create_error_response(404, "Message not found",
+                                         "There is no a message with id %s" % messageid
+                                        )
+
+
+        messages = []
+        for message in messages_db:
+            mesagge = {'link':{'href': api.url_for(Message, messageid=msg(messageid)),'rel':'self',
+                    'title': msg['title']}}
+        #Create the envelope
+        envelope = {}
+        envelope['user_links'] = [{'title': 'Sender', 'method': 'GET',
+                              'rel': 'parent', 'href': api.url_for(Users, nickname=nickname)},
+                             {'title': 'Users',
+                              'method': 'GET',
+                              'rel': 'collection',
+                              'href': api.url_for(Users)}
+                            ]
+        envelope['messages'] = messages
+
+        #RENDER
+        string_data = json.dumps(envelope)
+        return Response(string_data, 200, mimetype="application/vnd.mason+json;/profiles/message-profile")
 
 #Add the Regex Converter so we can use regex expressions when we define the
 #routes
@@ -1082,4 +1170,3 @@ def send_json_schema(schema_name):
 if __name__ == '__main__':
     #Debug true activates automatic code reloading and improved error messages
     app.run(debug=True)
-
